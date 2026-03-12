@@ -3,15 +3,18 @@ test_llm.py
 -----------
 Runs a pool of test queries against the university NL-to-SQL engine
 and prints detailed logs: retrieved chunks, generated SQL, and final answer.
+Results (questions + answers only) are also written to a markdown file.
 
 Usage:
     python test_llm.py
     python test_llm.py --db university.db --chroma-dir ./chroma_store
+    python test_llm.py --output results.md
 """
 
 import argparse
 import time
 from pathlib import Path
+from datetime import datetime
 
 import chromadb
 from llama_index.core import Settings, SQLDatabase, StorageContext, VectorStoreIndex
@@ -23,18 +26,20 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from sqlalchemy import create_engine
 from index_utils import *
 
-DEFAULT_DB = "university.db"
-DEFAULT_CHROMA_DIR = "./chroma_store"
+DEFAULT_DB = "2025-2026_data/university.db"
+DEFAULT_CHROMA_DIR = "2025-2026_data/chroma_store"
+DEFAULT_OUTPUT_MD = "2025-2026_data/results.md"
 
 # ---------------------------------------------------------------------------
 # Test question pool
 # ---------------------------------------------------------------------------
 
 TEST_QUESTIONS = [
-    # "Chi è Martino Trevisan?",
-    # "Chi è Trevisan Martino?",
-    # "Dimmi il codice Teams dell'insegnamento di Software Development Methods",
-    # "Quale insegnamento insegna il prof Paolo Vercesi?",
+    "Chi è Martino Trevisan?",
+    "Chi è Trevisan Martino?",
+    "Chi è Trevisan?",
+    "Chi è il prof Trevisan di Ingegneria Informatica?",
+    "Quale insegnamento tiene il prof Paolo Vercesi?",
     "Quali insegnamenti sono tenuti da Vercesi Paolo",
     "Quali insegnamenti sono tenuti dal prof De Lorenzo?"
 ]
@@ -120,7 +125,10 @@ def load_column_retriever(
 
 def build_query_engine(db_path: Path, chroma_dir: Path):
     engine = create_engine(f"sqlite:///{db_path}")
-    sql_database = SQLDatabase(engine, include_tables=["insegnamento", "personale"])
+    sql_database = SQLDatabase(
+        engine,
+        include_tables=["personale", "insegnamento", "lezione", "evento_aula"],
+    )
 
     table_node_mapping = SQLTableNodeMapping(sql_database)
     table_schema_objs = [
@@ -130,7 +138,7 @@ def build_query_engine(db_path: Path, chroma_dir: Path):
                 "Contains university courses. "
                 "Key columns: "
                 "course_name (course name, stored UPPERCASE — use UPPER() or LIKE for comparisons), "
-                "professors_raw (professor names, may contain multiple separated by '#' or other symbol and may be contained an ID), "
+                "professors (professor names, may contain multiple separated by '#' or other symbol and may be contained an ID), "
                 "degree_program (degree program name, UPPERCASE), "
                 "academic_year (format 'YYYY/YYYY', e.g. '2025/2026'), "
                 "period (semester code: 'S1' = first semester, 'S2' = second semester), "
@@ -156,39 +164,88 @@ def build_query_engine(db_path: Path, chroma_dir: Path):
     chroma_client = chromadb.PersistentClient(path=str(chroma_dir))
 
     cols_retrievers = {
-        "insegnamento": {
-            "course_name": load_column_retriever(
-                "insegnamento__course_name", chroma_client,
-                similarity_top_k=3, label="insegnamento.course_name"
-            ),
-            "professors_raw": load_column_retriever(
-                "insegnamento__professors_raw", chroma_client,
-                similarity_top_k=3, label="insegnamento.professors_raw"
-            ),
-            "degree_program": load_column_retriever(
-                "insegnamento__degree_program", chroma_client,
-                similarity_top_k=2, label="insegnamento.degree_program"
-            ),
-            "academic_year": load_column_retriever(
-                "insegnamento__academic_year", chroma_client,
-                similarity_top_k=1, label="insegnamento.academic_year"
-            ),
-            "period": load_column_retriever(
-                "insegnamento__period", chroma_client,
-                similarity_top_k=1, label="insegnamento.period"
-            ),
-        },
-        "personale": {
-            "nome": load_column_retriever(
-                "personale__nome", chroma_client,
-                similarity_top_k=3, label="personale.nome"
-            ),
-        },
+            "personale": {
+                "nome_and_surname": load_column_retriever(
+                    "personale__nome_and_surname", chroma_client, similarity_top_k=5
+                ),
+                "role": load_column_retriever(
+                    "personale__role", chroma_client, similarity_top_k=5
+                ),
+                "department": load_column_retriever(
+                    "personale__department", chroma_client, similarity_top_k=5
+                ),
+            },
+
+            "insegnamento": {
+                "degree_program_name": load_column_retriever(
+                    "insegnamento__degree_program_name", chroma_client, similarity_top_k=5
+                ),
+                "degree_program_name_eng": load_column_retriever(
+                    "insegnamento__degree_program_name_eng", chroma_client, similarity_top_k=5
+                ),
+                "subject_name": load_column_retriever(
+                    "insegnamento__subject_name", chroma_client, similarity_top_k=5
+                ),
+                "professors": load_column_retriever(
+                    "insegnamento__professors", chroma_client, similarity_top_k=5
+                ),
+                "period": load_column_retriever(
+                    "insegnamento__period", chroma_client, similarity_top_k=1
+                ),
+            },
+
+            "lezione": {
+                "degree_program_name": load_column_retriever(
+                    "lezione__degree_program_name", chroma_client, similarity_top_k=5
+                ),
+                "subject_name": load_column_retriever(
+                    "lezione__subject_name", chroma_client, similarity_top_k=5
+                ),
+                "study_year_code": load_column_retriever(
+                    "lezione__study_year_code", chroma_client, similarity_top_k=5
+                ),
+                "curriculum": load_column_retriever(
+                    "lezione__curriculum", chroma_client, similarity_top_k=5
+                ),
+                "date": load_column_retriever(
+                    "lezione__date", chroma_client, similarity_top_k=1
+                ),
+                "department": load_column_retriever(
+                    "lezione__department", chroma_client, similarity_top_k=5
+                ),
+                "room_name": load_column_retriever(
+                    "lezione__room_name", chroma_client, similarity_top_k=5
+                ),
+                "site_name": load_column_retriever(
+                    "lezione__site_name", chroma_client, similarity_top_k=5
+                ),
+                "address": load_column_retriever(
+                    "lezione__address", chroma_client, similarity_top_k=5
+                ),
+                "professors": load_column_retriever(
+                    "lezione__professors", chroma_client, similarity_top_k=5
+                ),
+            },
+            "evento_aula": {
+                "site_name": load_column_retriever(
+                    "evento_aula__site_name", chroma_client, similarity_top_k=5
+                ),
+                "room_name": load_column_retriever(
+                    "evento_aula__room_name", chroma_client, similarity_top_k=5
+                ),
+                "name_event": load_column_retriever(
+                    "evento_aula__name_event", chroma_client, similarity_top_k=5
+                ),
+                "professors": load_column_retriever(
+                    "evento_aula__professors", chroma_client, similarity_top_k=5
+                ),
+            },
     }
+
 
     query_engine = SQLTableRetrieverQueryEngine(
         sql_database,
-        obj_index.as_retriever(similarity_top_k=2),
+        obj_index.as_retriever(similarity_top_k=5),
         cols_retrievers=cols_retrievers,
     )
 
@@ -199,9 +256,12 @@ def build_query_engine(db_path: Path, chroma_dir: Path):
 # Run test suite
 # ---------------------------------------------------------------------------
 
-def run_tests(query_engine) -> None:
+def run_tests(query_engine, output_md: Path) -> None:
     total = len(TEST_QUESTIONS)
     errors = 0
+
+    # Collect results for markdown
+    md_results = []
 
     for idx, question in enumerate(TEST_QUESTIONS, 1):
         log_section(f"TEST {idx}/{total}: {question}")
@@ -227,6 +287,14 @@ def run_tests(query_engine) -> None:
 
             print(f"\n  ⏱  Elapsed: {elapsed:.2f}s")
 
+            md_results.append({
+                "question": question,
+                "answer": str(response),
+                "sql": sql,
+                "elapsed": elapsed,
+                "error": None,
+            })
+
         except Exception as exc:
             elapsed = time.time() - start
             errors += 1
@@ -234,9 +302,45 @@ def run_tests(query_engine) -> None:
             print(f"  {type(exc).__name__}: {exc}")
             print(f"\n  ⏱  Elapsed: {elapsed:.2f}s")
 
+            md_results.append({
+                "question": question,
+                "answer": None,
+                "elapsed": elapsed,
+                "error": f"{type(exc).__name__}: {exc}",
+            })
+
     print(f"\n{SEPARATOR}")
     print(f"  Results: {total - errors}/{total} passed  |  {errors} errors")
     print(SEPARATOR)
+
+    # Write markdown file
+    write_markdown(output_md, md_results, total, errors)
+    print(f"\n  📄 Results saved to: {output_md}")
+
+
+# ---------------------------------------------------------------------------
+# Write markdown report (questions + answers only)
+# ---------------------------------------------------------------------------
+
+def write_markdown(output_path: Path, results: list, total: int, errors: int) -> None:
+    lines = []
+    lines.append("# Test Results — University NL Query Engine")
+    lines.append(f"\n**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ")
+    lines.append(f"**Passed:** {total - errors}/{total}  |  **Errors:** {errors}\n")
+    lines.append("---\n")
+
+    for idx, r in enumerate(results, 1):
+        lines.append(f"## {idx}. {r['question']}\n")
+        if r["error"]:
+            lines.append(f"⚠️ **Error:** `{r['error']}`\n")
+        else:
+            if r.get("sql"):
+                lines.append(f"```sql\n{r['sql']}\n```\n")
+            lines.append(f"**Risposta:** {r['answer']}\n")
+        lines.append(f"*Tempo: {r['elapsed']:.2f}s*\n")
+        lines.append("---\n")
+
+    output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -250,10 +354,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--chroma-dir", default=DEFAULT_CHROMA_DIR, help="ChromaDB persistence directory"
     )
+    parser.add_argument(
+        "--output", default=DEFAULT_OUTPUT_MD, help="Markdown output file path (default: results.md)"
+    )
     args = parser.parse_args()
 
     print("\nLoading query engine...")
     qe = build_query_engine(Path(args.db), Path(args.chroma_dir))
     print("Query engine ready.\n")
 
-    run_tests(qe)
+    run_tests(qe, Path(args.output))

@@ -14,7 +14,7 @@ import sqlite3
 from pathlib import Path
 import os
 
-DEFAULT_DB = "university.db"
+DEFAULT_DB = "2025-2026_data/university.db"
 
 # ---------------------------------------------------------------------------
 # DDL — base tables
@@ -38,13 +38,15 @@ CREATE TABLE IF NOT EXISTS personale (
 # degree is INGEGNERIA
 DDL_INSEGNAMENTO = """
 CREATE TABLE IF NOT EXISTS insegnamento (
-    subject_code                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    subject_code             TEXT,
 
     degree_program_name      TEXT,
     degree_program_name_eng  TEXT,
     degree_program_code      TEXT,
 
-    subject_name             TEXT NOT NULL,
+    subject_name             TEXT,
     
     study_code               TEXT,
     academic_year            TEXT,
@@ -61,51 +63,48 @@ DDL_LEZIONE = """
 CREATE TABLE IF NOT EXISTS lezione (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    subject_code        TEXT NOT NULL,
+    subject_code        TEXT,
 
-    degree_program_name TEXT NOT NULL,
-    degree_program_code TEXT NOT NULL,
+    degree_program_name TEXT,
+    degree_program_code TEXT,
 
-    subject_name        TEXT NOT NULL,
+    subject_name        TEXT,
 
-    study_year_code     TEXT NOT NULL,
+    study_year_code     TEXT,
     curriculum          TEXT,
 
-    date                TEXT NOT NULL,
-    start_time          TEXT NOT NULL,
-    end_time            TEXT NOT NULL,
-    full_location       TEXT,
-    department          TEXT NOT NULL,
+    date                TEXT,
+    start_time          TEXT,
+    end_time            TEXT,
+
+    department          TEXT,
+
+    room_code           TEXT,
+    room_name           TEXT,
+    site_code           TEXT,
+    site_name           TEXT,
+    address             TEXT,
 
     professors          TEXT,
-    cancelled           TEXT DEFAULT 'no', 
+    cancelled           TEXT DEFAULT 'no',
     url                 TEXT
 );
 """
 
 DDL_EVENTO_AULA = """
-CREATE TABLE IF NOT EXISTS evento (
+CREATE TABLE IF NOT EXISTS evento_aula (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    subject_code        TEXT NOT NULL,
-
-    degree_program_name TEXT NOT NULL,
-    degree_program_code TEXT NOT NULL,
-
-    subject_name        TEXT NOT NULL,
-
-    study_year_code     TEXT NOT NULL,
-    curriculum          TEXT,
-
-    date                TEXT NOT NULL,
-    start_time          TEXT NOT NULL,
-    end_time            TEXT NOT NULL,
-    full_location       TEXT,
-    department          TEXT NOT NULL,
-
-    professors          TEXT,
-    cancelled           TEXT DEFAULT 'no', 
-    url                 TEXT
+    site_code           TEXT,
+    room_code           TEXT,
+    date                TEXT,
+    last_update         TEXT,
+    site_name           TEXT,
+    room_name           TEXT,
+    start_time          TEXT,
+    end_time            TEXT,
+    name_event          TEXT,
+    professors          TEXT
 );
 """
 
@@ -122,7 +121,7 @@ def create_schema(db_path: Path) -> None:
         con.execute(DDL_PERSONALE)
         con.execute(DDL_INSEGNAMENTO)
         con.execute(DDL_LEZIONE)
-
+        con.execute(DDL_EVENTO_AULA)
 
     con.close()
     print(f"Schema created: {db_path.resolve()}")

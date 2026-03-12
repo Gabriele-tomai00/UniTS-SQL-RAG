@@ -2,6 +2,10 @@ from llama_index.core import Settings
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 
+def get_prompt_from_file(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
 Settings.embed_model = HuggingFaceEmbedding(model_name="intfloat/multilingual-e5-small")
 
 Settings.llm = OpenAILike(
@@ -16,6 +20,3 @@ Settings.llm = OpenAILike(
     timeout=30,
 )
 
-def get_prompt_from_file(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        return f.read()
