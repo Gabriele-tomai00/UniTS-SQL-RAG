@@ -25,13 +25,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Paths
 # ---------------------------------------------------------------------------
 
-DEFAULT_DB         = Path("../2025-2026_data/university.db")
-DEFAULT_CHROMA_DIR = Path("../2025-2026_data/chroma_store")
+DEFAULT_DB         = Path("2025-2026_data/university.db")
+DEFAULT_CHROMA_DIR = Path("2025-2026_data/chroma_store")
 
-
-# ---------------------------------------------------------------------------
-# Chainlit hooks
-# ---------------------------------------------------------------------------
 
 @cl.on_chat_start
 async def on_chat_start():
@@ -47,22 +43,12 @@ async def on_chat_start():
         ),
     ).send()
 
-    # Build once per session — this loads ChromaDB indexes and the table router
-    query_engine = build_query_engine(DEFAULT_DB, DEFAULT_CHROMA_DIR)
-    cl.user_session.set("query_engine", query_engine)
-
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    """Called every time the user sends a message."""
-
-    # Retrieve the engine built at session start
-    query_engine: RoutedSQLQueryEngine = cl.user_session.get("query_engine")
-
-    # Show a thinking indicator while the query runs
+    _query_engine: RoutedSQLQueryEngine = build_query_engine(DEFAULT_DB, DEFAULT_CHROMA_DIR)
     async with cl.Step(name="Elaborazione query...") as step:
-        # query() is synchronous — run it in a thread to avoid blocking the event loop
-        response = await cl.make_async(query_engine.query)(message.content)
+        response = await cl.make_async(_query_engine.query)(message.content)
 
         # Extract the generated SQL for transparency (if available)
         sql = None
