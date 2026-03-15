@@ -39,5 +39,5 @@ printf "\n\n\nPOPULATE DB\n"
 python3 02_populate_db.py
 
 printf "\n\n\nCREATE INDEX FOR RAG\n"
-python3 03_lamaindex_setup.py
+python3 03_create_rag_index.py
 
