@@ -36,6 +36,9 @@ from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
+import io
+import sys
+import contextlib
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -175,7 +178,7 @@ def build_router_engine(
     router = RouterQueryEngine(
         selector=selector,
         query_engine_tools=tools,
-        verbose=True,
+        verbose=True,   # kept True so the captured output contains tool names
     )
 
     print("Router ready.\n")
@@ -224,8 +227,26 @@ class UniTSChatbot:
         else:
             prompt = f"{self.SYSTEM_PROMPT}\n\nUtente: {user_query}"
 
-        response = self._router.query(prompt)
-        answer   = str(response)
+        # Suppress all debug output from LoggingRetriever, table router,
+        # and RouterQueryEngine verbose mode; capture it to detect which
+        # tools were actually selected.
+        captured = io.StringIO()
+        with contextlib.redirect_stdout(captured):
+            response = self._router.query(prompt)
+
+        debug_output = captured.getvalue()
+
+        # Detect which tools were invoked from the captured verbose output
+        used_sql     = "sql_rag"     in debug_output
+        used_general = "general_rag" in debug_output
+        if used_sql and used_general:
+            print("[routing] SQL database + General RAG")
+        elif used_sql:
+            print("[routing] SQL database")
+        elif used_general:
+            print("[routing] General RAG")
+
+        answer = str(response)
 
         self._history.append({"role": "user",      "content": user_query})
         self._history.append({"role": "assistant", "content": answer})
@@ -263,7 +284,7 @@ def interactive_loop(bot: UniTSChatbot) -> None:
             continue
 
         answer = bot.chat(user_input)
-        print(f"\nBot: {answer}\n")
+        print(f"Bot: {answer}\n")
 
 
 # ---------------------------------------------------------------------------
