@@ -48,7 +48,8 @@ TEST_QUESTIONS = [
     "Che lezioni ci sono venerdì 13 marzo, per gli studenti di Computer Engineering curriculum Informatics?",
     "Che lezioni c'erano ieri, per gli studenti di Computer Engineering curriculum Informatics?",
     "Ci sono lezioni di geometria di giovedì?",
-    "Dimmi tutti i corsi di laurea (nome e tipo) del dipartimento di ingegneria e architettura, "
+    "Dimmi tutti i corsi di laurea (nome e tipo) del dipartimento di ingegneria e architettura, ",
+    "Dimmi tutti gli esami in calendario del corso di Computer Engineering che si sono tenuti nel mese di febbraio 2026"
 ]
 
 # ---------------------------------------------------------------------------
@@ -76,9 +77,6 @@ def log_sub(title: str) -> None:
 
 def run_tests(query_engine, output_md: Path) -> None:
     total = len(TEST_QUESTIONS)
-    errors = 0
-
-    # Collect results for markdown
     md_results = []
 
     for idx, question in enumerate(TEST_QUESTIONS, 1):
@@ -86,53 +84,38 @@ def run_tests(query_engine, output_md: Path) -> None:
 
         start = time.time()
         try:
-            response = query_engine.query(question)
-            elapsed = time.time() - start
+            response, timings = query_engine.query(question)
 
-            # Generated SQL
             sql = None
             if hasattr(response, "metadata") and response.metadata:
                 sql = response.metadata.get("sql_query")
 
             log_sub("Generated SQL")
-            if sql:
-                print(f"  {sql}")
-            else:
-                print("  (no SQL metadata available)")
-
+            print(f"  {sql}" if sql else "  (no SQL metadata available)")
             log_sub("Answer")
             print(f"  {response}")
-
-            print(f"\n  ⏱  Elapsed: {elapsed:.2f}s")
 
             md_results.append({
                 "question": question,
                 "answer": str(response),
                 "sql": sql,
-                "elapsed": elapsed,
+                "timings": timings,
                 "error": None,
             })
 
+
         except Exception as exc:
             elapsed = time.time() - start
-            errors += 1
             log_sub("ERROR")
             print(f"  {type(exc).__name__}: {exc}")
-            print(f"\n  ⏱  Elapsed: {elapsed:.2f}s")
-
             md_results.append({
                 "question": question,
                 "answer": None,
-                "elapsed": elapsed,
+                "timings": {"total": elapsed},
                 "error": f"{type(exc).__name__}: {exc}",
             })
-
-    print(f"\n{SEPARATOR}")
-    print(f"  Results: {total - errors}/{total} passed  |  {errors} errors")
-    print(SEPARATOR)
-
-    # Write markdown file
-    write_markdown(output_md, md_results, total, errors)
+    
+    write_markdown(output_md, md_results, total)
     print(f"\n  📄 Results saved to: {output_md}")
 
 
@@ -140,12 +123,11 @@ def run_tests(query_engine, output_md: Path) -> None:
 # Write markdown report (questions + answers only)
 # ---------------------------------------------------------------------------
 
-def write_markdown(output_path: Path, results: list, total: int, errors: int) -> None:
+def write_markdown(output_path: Path, results: list, total: int) -> None:
     lines = []
     lines.append("# Test Results — University NL Query Engine")
-    lines.append(f"\n**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  ")
-    lines.append(f"**Passed:** {total - errors}/{total}  |  **Errors:** {errors}\n")
-    lines.append("---\n")
+    lines.append(f"\n<sub>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</sub>")  # MODIFIED
+    lines.append("\n---\n")
 
     for idx, r in enumerate(results, 1):
         lines.append(f"## {idx}. {r['question']}\n")
@@ -155,7 +137,15 @@ def write_markdown(output_path: Path, results: list, total: int, errors: int) ->
             if r.get("sql"):
                 lines.append(f"```sql\n{r['sql']}\n```\n")
             lines.append(f"**Risposta:** {r['answer']}\n")
-        lines.append(f"*Tempo: {r['elapsed']:.2f}s*\n")
+
+        t = r.get("timings", {})
+        lines.append(
+            f"<sub>"
+            f"Table routing: **{t.get('table_routing', 0):.2f}s** | "
+            f"Pipeline (retrieval+SQL+DB+answer): **{t.get('pipeline', 0):.2f}s** | "
+            f"Total: **{t.get('total', 0):.2f}s**"
+            f"</sub>\n"
+        )
         lines.append("---\n")
 
     output_path.write_text("\n".join(lines), encoding="utf-8")

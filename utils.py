@@ -11,19 +11,20 @@ from llama_index.core.schema import TextNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from pathlib import Path
 import re
+import time
 
 def get_prompt_from_file(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 
-Settings.embed_model = HuggingFaceEmbedding(model_name="intfloat/multilingual-e5-small")
+Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 
 Settings.llm = OpenAILike(
     model="ggml-org/gpt-oss-120b-GGUF",
     api_base="http://172.30.42.129:8080/v1",
     api_key="not_necessary",
     context_window=8192,
-    max_tokens=1024,
+    max_tokens=2048,
     temperature=0.1,
     is_chat_model=True,
     system_prompt=get_prompt_from_file("prompt_for_llm.txt"),
@@ -104,6 +105,7 @@ def load_column_retriever(
     chroma_client: chromadb.PersistentClient,
     top_k: int = 3,
     label: str = "",
+    similarity_cutoff: float | None = None,  # NEW
 ) -> LoggingRetriever:
     try:
         chroma_collection = chroma_client.get_collection(collection_name)
@@ -114,9 +116,21 @@ def load_column_retriever(
 
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     index = VectorStoreIndex.from_vector_store(vector_store)
-    retriever = index.as_retriever(similarity_top_k=top_k)
-    return LoggingRetriever(retriever, label or collection_name)
 
+    retriever_kwargs = {"similarity_top_k": top_k}
+    if similarity_cutoff is not None:
+        retriever_kwargs["vector_store_query_mode"] = "default"
+    
+    retriever = index.as_retriever(**retriever_kwargs)
+
+    # Apply cutoff post-hoc if specified (most reliable with ChromaDB)
+    if similarity_cutoff is not None:
+        from llama_index.core.postprocessor import SimilarityPostprocessor
+        retriever._node_postprocessors = [
+            SimilarityPostprocessor(similarity_cutoff=similarity_cutoff)
+        ]
+
+    return LoggingRetriever(retriever, label or collection_name)
 
 # ---------------------------------------------------------------------------
 # Table router — selects relevant tables for a given query
@@ -227,11 +241,16 @@ class RoutedSQLQueryEngine:
         self._all_cols_retrievers = all_cols_retrievers
         self._table_router_index = table_router_index
 
-    def query(self, query_str: str):
-        # Stage 1: select relevant tables
-        relevant_tables = route_tables(query_str, self._table_router_index)
 
-        # Stage 2: filter cols_retrievers to selected tables only
+    def query(self, query_str: str):
+        t_total = time.time()
+
+        # Stage 1: table routing
+        t0 = time.time()
+        relevant_tables = route_tables(query_str, self._table_router_index)
+        t_routing = time.time() - t0
+
+        # Stage 2: build routed engine
         routed_cols = {
             table: (
                 self._all_cols_retrievers[table] if table in relevant_tables else {}
@@ -239,7 +258,6 @@ class RoutedSQLQueryEngine:
             for table in self._all_cols_retrievers
         }
 
-        # Build a fresh engine with only the relevant column retrievers
         engine = SQLTableRetrieverQueryEngine(
             self._sql_database,
             self._obj_index.as_retriever(similarity_top_k=5),
@@ -247,10 +265,24 @@ class RoutedSQLQueryEngine:
             llm=Settings.llm,
             text_to_sql_prompt=TEXT_TO_SQL_PROMPT,
         )
-        return engine.query(query_str)
 
+        # Stage 3: full pipeline (column retrieval + SQL gen + DB exec + answer synthesis)
+        t0 = time.time()
+        response = engine.query(query_str)
+        t_pipeline = time.time() - t0
 
+        timings = {
+            "table_routing": t_routing,
+            "pipeline":      t_pipeline,
+            "total":         time.time() - t_total,
+        }
 
+        print(f"\n  [TIMING SUMMARY]")
+        print(f"    Table routing : {t_routing:.3f}s")
+        print(f"    Pipeline      : {t_pipeline:.3f}s")
+        print(f"    TOTAL         : {timings['total']:.3f}s")
+
+        return response, timings
 # ---------------------------------------------------------------------------
 # Table router — semantic description used to pick relevant tables per query
 # ---------------------------------------------------------------------------
@@ -268,8 +300,8 @@ TABLE_DOMAINS = {
         "teams code codice periodo semestre academic-year anno accademico"
     ),
     "corso_di_laurea": (
-        "name url category department type duration location language "
-        "corsi di laurea triennale, magistrale e a ciclo unico con relativo dipartimento, durata, lingua di erogazione, tipo di corso"
+        "name url department type duration location language "
+        "corsi di laurea triennale, magistrale e a ciclo unico con relativo dipartimento, durata, lingua di erogazione, tipo di corso (triennale, magistrale, a ciclo unico)"
     ),
     "lezione": (
         "lesson lecture lezione schedule orario timetable "
@@ -341,9 +373,8 @@ def build_query_engine(db_path: Path, chroma_dir: Path) -> RoutedSQLQueryEngine:
                 "Key columns: "
                 "name (course name), "
                 "url (link of the webpage course), "
-                "category (if it's bachelor or master) "
                 "department, "
-                "type (if it's bachelor or master) "
+                "type (if it's bachelor or master or 5 years course of a 6 years course) "
                 "duration (years), "
                 "location (the site), "
                 "language (language of the lessons), "
@@ -426,13 +457,12 @@ def build_query_engine(db_path: Path, chroma_dir: Path) -> RoutedSQLQueryEngine:
         "insegnamento": {
             "degree_program_name":     load_column_retriever("insegnamento__degree_program_name",     chroma_client, top_k=5),
             "degree_program_name_eng": load_column_retriever("insegnamento__degree_program_name_eng", chroma_client, top_k=5),
-            "subject_name":            load_column_retriever("insegnamento__subject_name",            chroma_client, top_k=5),
+            "subject_name":            load_column_retriever("insegnamento__subject_name",            chroma_client, top_k=5, similarity_cutoff=0.5),
             "professors":              load_column_retriever("insegnamento__professors",              chroma_client, top_k=5),
             "period":                  load_column_retriever("insegnamento__period",                  chroma_client, top_k=1),
         },
         "corso_di_laurea": {
             "name":             load_column_retriever("corso_di_laurea__name",                chroma_client, top_k=5),
-            "category":         load_column_retriever("corso_di_laurea__category",            chroma_client, top_k=5),
             "department":       load_column_retriever("corso_di_laurea__department",          chroma_client, top_k=5),
             "type":             load_column_retriever("corso_di_laurea__type",                chroma_client, top_k=5),
             "duration":         load_column_retriever("corso_di_laurea__duration",            chroma_client, top_k=5),
@@ -440,7 +470,7 @@ def build_query_engine(db_path: Path, chroma_dir: Path) -> RoutedSQLQueryEngine:
         },
         "lezione": {
             "degree_program_name": load_column_retriever("lezione__degree_program_name", chroma_client, top_k=5),
-            "subject_name":        load_column_retriever("lezione__subject_name",        chroma_client, top_k=5),
+            "subject_name":        load_column_retriever("lezione__subject_name",        chroma_client, top_k=5, similarity_cutoff=0.5),
             "study_year_code":     load_column_retriever("lezione__study_year_code",     chroma_client, top_k=5),
             "curriculum":          load_column_retriever("lezione__curriculum",          chroma_client, top_k=5),
             "date":                load_column_retriever("lezione__date",                chroma_client, top_k=1),
