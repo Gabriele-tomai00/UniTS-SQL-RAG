@@ -138,12 +138,6 @@ def build_all_indexes(db_path: Path, chroma_dir: Path) -> None:
     ).fetchall()
     build_column_index([r[0] for r in rows], "corso_di_laurea__url", chroma_client)
 
-    print("\nBuilding index: corso_di_laurea.category")
-    rows = con.execute(
-        "SELECT DISTINCT category FROM corso_di_laurea WHERE category IS NOT NULL"
-    ).fetchall()
-    build_column_index([r[0] for r in rows], "corso_di_laurea__category", chroma_client)
-
     print("\nBuilding index: corso_di_laurea.department")
     rows = con.execute(
         "SELECT DISTINCT department FROM corso_di_laurea WHERE department NOT NULL"

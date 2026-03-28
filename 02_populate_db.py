@@ -275,8 +275,8 @@ def insert_data(
         corso_di_laurea_rows = load_corso_di_laurea(info_corsi_di_laurea)
         con.executemany(
             """INSERT INTO corso_di_laurea
-               (name, url, category, department, type, duration, location, language)
-               VALUES (:name, :url, :category, :department,
+               (name, url, department, type, duration, location, language)
+               VALUES (:name, :url, :department,
                        :type, :duration, :location, :language)""",
             corso_di_laurea_rows,
         )

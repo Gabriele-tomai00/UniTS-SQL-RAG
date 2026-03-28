@@ -65,7 +65,6 @@ CREATE TABLE IF NOT EXISTS corso_di_laurea (
 
     name            TEXT,
     url             TEXT,
-    category        TEXT,
     department      TEXT,
     type            TEXT,
     duration        TEXT,
