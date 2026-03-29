@@ -1,8 +1,4 @@
 """
-app.py
-------
-Chainlit front-end for the University NL → SQL → Answer pipeline.
-
 Run with:
     chainlit run app.py
 """
@@ -31,26 +27,23 @@ DEFAULT_CHROMA_DIR = Path("2025-2026_data/chroma_store")
 
 @cl.on_chat_start
 async def on_chat_start():
-    """
-    Called once when a new chat session opens.
-    Builds the query engine and stores it in the user session so it is
-    reused across messages without rebuilding every time.
-    """
+    query_engine = build_query_engine(DEFAULT_DB, DEFAULT_CHROMA_DIR)
+    cl.user_session.set("query_engine", query_engine)
+    
     await cl.Message(
         content=(
-            "🎓 Benvenuto nel sistema di informazioni universitarie UniTS!\n"
-            "Puoi chiedermi orari, docenti, aule e molto altro."
+            "🎓 Welcome to the UniTS university information system!\n"
+            "You can ask me about schedules, professors, classrooms, and much more."
         ),
     ).send()
-
-
+            
 @cl.on_message
 async def on_message(message: cl.Message):
-    _query_engine: RoutedSQLQueryEngine = build_query_engine(DEFAULT_DB, DEFAULT_CHROMA_DIR)
-    async with cl.Step(name="Elaborazione query...") as step:
-        response = await cl.make_async(_query_engine.query)(message.content)
+    query_engine: RoutedSQLQueryEngine = cl.user_session.get("query_engine")
 
-        # Extract the generated SQL for transparency (if available)
+    async with cl.Step(name="Query elaboration...") as step:
+        response, timings = await cl.make_async(query_engine.query)(message.content)
+
         sql = None
         if hasattr(response, "metadata") and response.metadata:
             sql = response.metadata.get("sql_query")
@@ -58,7 +51,6 @@ async def on_message(message: cl.Message):
         if sql:
             step.output = f"```sql\n{sql}\n```"
 
-    # Send the final natural language answer
     await cl.Message(content=str(response)).send()
 
 
@@ -70,3 +62,21 @@ def on_stop():
 @cl.on_chat_end
 def on_chat_end():
     print("The user disconnected.")
+
+
+
+
+@cl.set_starters
+async def set_starters():
+    return [
+        cl.Starter(
+            label="info about exams dates for Machine",
+            message="tell me all the exams in the calendar for the Machine Learning subject that were held in February 2026",
+        ),
+
+        cl.Starter(
+            label="Info about a professor",
+            message="Who is Trevisan Martino",
+        )
+    ]
+# ...

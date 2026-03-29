@@ -4,6 +4,8 @@ A natural language query system for the University of Trieste (UniTS) database.
 It allows users to ask questions in plain Italian or English and get accurate answers
 by combining vector search (RAG) with LLM-generated SQL queries.
 
+<img src="asserts/clip_chainlit.gif" alt="chainlit" style="width:90%; height:auto;">
+
 ## Architecture
 
 - **SQLite** database storing university data (courses, staff, lessons, classrooms, etc.)
