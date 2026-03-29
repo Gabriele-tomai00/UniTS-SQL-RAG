@@ -2,7 +2,7 @@ utils
 requests
 joblib
 chromadb
-
+python-dotenv
 
 llama_index.core
 llama_index.vector_stores.chroma

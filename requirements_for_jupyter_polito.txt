@@ -1,6 +1,7 @@
 # Web / utilities
 requests
 joblib
+python-dotenv
 
 # Vector store
 chromadb

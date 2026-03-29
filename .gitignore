@@ -3,7 +3,7 @@ env/
 venv/
 env311/
 
-
+.env
 
 chroma_store/
 2025-2026_data/

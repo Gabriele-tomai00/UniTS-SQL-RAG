@@ -13,6 +13,10 @@ from llama_index.core.indices.struct_store.sql_query import SQLTableRetrieverQue
 from llama_index.core.objects import ObjectIndex, SQLTableNodeMapping, SQLTableSchema
 from llama_index.core.schema import TextNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 def get_prompt_from_file(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
@@ -22,8 +26,8 @@ Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-m3")
 
 Settings.llm = OpenAILike(
     model="ggml-org/gpt-oss-120b-GGUF",
-    api_base="http://172.30.42.129:8080/v1",
-    api_key="not_necessary",
+    api_base=os.getenv("LLM_API_BASE"),
+    api_key=os.getenv("LLM_API_KEY", "not_necessary"),
     context_window=8192,
     max_tokens=2048,
     temperature=0.1,
