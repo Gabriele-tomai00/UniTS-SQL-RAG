@@ -35,21 +35,21 @@ DEFAULT_OUTPUT_MD = "2025-2026_data/results.md"
 # ---------------------------------------------------------------------------
 
 TEST_QUESTIONS = [
-    "Chi è Martino Trevisan?",
-    "Chi è Trevisan Martino?",
-    "Chi è Trevisan?",
-    "Chi è il prof Trevisan di Ingegneria Informatica?",
-    "Quale insegnamento tiene il prof Paolo Vercesi?",
-    "Quali insegnamenti sono tenuti da Vercesi Paolo",
-    "Quali insegnamenti sono tenuti dal prof De Lorenzo?",
-    "Quali insegnamenti sono tenuti dal prof De Lorenzo del dipartimento di ingegneria?",
-    "Quali insegnamenti sono tenuti dalla prof De Lorenzo?",
-    "Quali insegnamenti sono tenuti dai professori con cognome De Lorenzo?",
-    "Che lezioni ci sono venerdì 13 marzo, per gli studenti di Computer Engineering curriculum Informatics?",
-    "Che lezioni c'erano ieri, per gli studenti di Computer Engineering curriculum Informatics?",
-    "Ci sono lezioni di geometria di giovedì?",
-    "Dimmi tutti i corsi di laurea (nome e tipo) del dipartimento di ingegneria e architettura, ",
-    "Dimmi tutti gli esami in calendario del corso di Computer Engineering che si sono tenuti nel mese di febbraio 2026"
+    # "Who is Martino Trevisan?",
+    # "Who is Trevisan Martino?",
+    # "Who is Trevisan?",
+    # "Who is professor Trevisan of Computer Science?",
+    # "What course does professor Paolo Vercesi teach?",
+    # "What courses are taught by Vercesi Paolo",
+    # "What courses are taught by De Lorenzo?",
+    # "What courses are taught by De Lorenzo of the Department of Engineering?",
+    # "What courses are taught by De Lorenzo?",
+    # "What courses are taught by professors with the surname De Lorenzo?",
+    "What lessons are there on Friday, March 13, for students of Computer Engineering curriculum Informatics?",
+    "What lessons were there yesterday, for students of Computer Engineering curriculum Informatics?",
+    # "Are there any geometry classes on Thursday?",
+    # "Tell me all the degree programs (name and type) of the Department of Engineering and Architecture",
+    # "tell me all the exams in the calendar for the Advanced Internet Technologies subject that were held in February 2026"
 ]
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ def write_markdown(output_path: Path, results: list, total: int) -> None:
         else:
             if r.get("sql"):
                 lines.append(f"```sql\n{r['sql']}\n```\n")
-            lines.append(f"**Risposta:** {r['answer']}\n")
+            lines.append(f"**Answer:** {r['answer']}\n")
 
         t = r.get("timings", {})
         lines.append(
