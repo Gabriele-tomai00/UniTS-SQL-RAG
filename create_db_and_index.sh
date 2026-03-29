@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-ENV_DIR="env"
+ENV_DIR="env311"
+DATA_DIR="2025-2026_data"
 
 echo "Using START_DATE = $START_DATE"
 echo "Using END_DATE = $END_DATE"
@@ -31,6 +32,10 @@ else
     fi
 fi
 
+printf "\n\n\UNZIP FOLDER\n"
+if [ ! -d "${DATA_DIR}_unzipped" ]; then
+    unzip "${DATA_DIR}.zip" -d "${DATA_DIR}_unzipped/ "
+fi
 
 printf "\n\n\nCREATE DB\n"
 python3 01_create_schema.py

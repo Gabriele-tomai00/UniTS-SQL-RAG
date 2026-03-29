@@ -29,6 +29,11 @@ simply because both words share the `GEO` prefix and have similar character sequ
 Italian/English content robustly, which is important given that UniTS course names and
 degree programs appear in both languages.
 ## Setup
+First of all, unzip the folder 2025-2026_data.zip with the following command:
+```bash
+unzip 2025-2026_data.zip -d 2025-2026_data/
+```
+The directory contains the json files with the data (and acutally it already contains the db ready)
 
 ### 1. Create the database schema
 Creates all tables: `personale`, `insegnamento`, `lezione`, `evento_aula`, `info_aula`, `corso_di_laurea`.
