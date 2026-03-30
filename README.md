@@ -93,7 +93,6 @@ SELECT * FROM personale WHERE UPPER(nome_and_surname) LIKE '%TREVISAN MARTINO%' 
 **Answer:** Prof. Martino Trevisan is an **Associate Professor** (Professore Associato) in the **Department of Engineering and Architecture** at the University of Trieste.  
 
 - **Email:** martino.trevisan@dia.units.it  
-- **Phone:** 040 558 3861  
 
 (Record last updated on 06/03/2026.)
 
@@ -109,7 +108,6 @@ SELECT id, nome_and_surname, role, department, email, phone FROM personale WHERE
 **Answer:** Prof. Martino Trevisan is an **Associate Professor** in the **Department of Engineering and Architecture** at the University of Trieste.  
 
 - **Email:** martino.trevisan@dia.units.it  
-- **Phone:** +39 040 558 3861  
 
 If you need further information about his teaching activities, research interests, or publications, please let me know.
 
@@ -123,12 +121,12 @@ SELECT id, nome_and_surname, role, department, email, phone FROM personale WHERE
 
 **Answer:** There are several members of the university community with the surname **Trevisan**. Here are the matches found in our personnel database:
 
-| Full name | Role | Department | Email | Phone |
-|-----------|------|------------|-------|-------|
-| **Alberto Trevisan** | Dottorando di ricerca | Dipartimento di Ingegneria e Architettura | s268118@stud.units.it | N/A |
-| **Martino Trevisan** | Professore Associato | Dipartimento di Ingegneria e Architettura | martino.trevisan@dia.units.it | 040 558 3861 |
-| **Piergiorgio Trevisan** | Professore Associato | Dipartimento di Studi Umanistici | ptrevisan@units.it | 040 558 4413 |
-| **Matilde Trevisani** (note the different spelling) | Professore Associato | Dipartimento di Scienze Economiche, Aziendali, Matematiche e Statistiche | MATILDE.TREVISANI@deams.units.it | 040 558 2519 |
+| Full name | Role | Department | Email | 
+|-----------|------|------------|-------|
+| **Alberto Trevisan** | Dottorando di ricerca | Dipartimento di Ingegneria e Architettura | s268118@stud.units.it |
+| **Martino Trevisan** | Professore Associato | Dipartimento di Ingegneria e Architettura | martino.trevisan@dia.units.it |
+| **Piergiorgio Trevisan** | Professore Associato | Dipartimento di Studi Umanistici | ptrevisan@units.it |
+| **Matilde Trevisani** (note the different spelling) | Professore Associato | Dipartimento di Scienze Economiche, Aziendali, Matematiche e Statistiche | MATILDE.TREVISANI@deams.units.it |
 
 Could you please specify which **Trevisan** you are interested in (e.g., full name or department) so I can provide more detailed information?
 
@@ -218,32 +216,7 @@ If you need further details (e.g., specific class codes, schedules, or additiona
 
 ---
 
-### 9. What courses are taught by De Lorenzo?
-
-```sql
-SELECT subject_name, degree_program_name, professors
-FROM insegnamento
-WHERE UPPER(professors) LIKE '%DE LORENZO ANDREA%'
-LIMIT 40;
-```
-
-**Answer:** Assuming you are referring to **Prof. Andrea De Lorenzo**, here are the courses he teaches (grouped by subject and showing all degree programs in which each subject appears):
-
-- **BASI DI DATI** – offered in:
-  - Ingegneria Elettronica e Informatica  
-  - Intelligenza Artificiale e Data Analytics  
-
-- **WEB APPLICATION PROGRAMMING** – offered in:
-  - Computer Engineering  
-
-- **DATABASE** – offered in:
-  - Geophysics and Geodata  
-
-These are the distinct subjects associated with Prof. De Lorenzo in the current database. If you need further details (e.g., specific lecture times, rooms, or additional professors), please let me know.
-
----
-
-### 10. What courses are taught by professors with the surname De Lorenzo?
+### 9. What courses are taught by professors with the surname De Lorenzo?
 
 ```sql
 SELECT DISTINCT subject_name, degree_program_name, professors FROM insegnamento WHERE UPPER(professors) LIKE '%DE LORENZO%' LIMIT 40;
@@ -258,7 +231,7 @@ Could you let me know which professor you are interested in, or if you would lik
 
 ---
 
-### 11. What lessons are there on Friday, March 13, for students of Computer Engineering curriculum Informatics?
+### 10. What lessons are there on Friday, March 13, for students of Computer Engineering curriculum Informatics?
 
 ```sql
 SELECT date, start_time, end_time, subject_name, room_name, site_name
@@ -280,7 +253,7 @@ These are the only entries returned for the specified date and curriculum. If yo
 
 ---
 
-### 12. What lessons were there yesterday, for students of Computer Engineering curriculum Informatics?
+### 11. What lessons were there yesterday, for students of Computer Engineering curriculum Informatics?
 
 ```sql
 SELECT date, start_time, end_time, subject_name, room_name, site_name FROM lezione WHERE date = '2026-03-28' AND UPPER(degree_program_name) LIKE '%COMPUTER ENGINEERING%' AND UPPER(curriculum) LIKE '%INFORMATICS%' LIMIT 40;
@@ -292,7 +265,7 @@ If you think the date or the curriculum name might be different, please try spec
 
 ---
 
-### 13. Are there any geometry classes on Thursday?
+### 12. Are there any geometry classes on Thursday?
 
 ```sql
 SELECT date, start_time, end_time, subject_name, room_name, site_name FROM lezione WHERE date = '2026-03-19' AND UPPER(subject_name) LIKE '%GEOMETRIA%' LIMIT 40;
@@ -308,7 +281,7 @@ If you need information for a different week or additional details, just let me 
 
 ---
 
-### 14. Tell me all the degree programs (name and type) of the Department of Engineering and Architecture
+### 13. Tell me all the degree programs (name and type) of the Department of Engineering and Architecture
 
 ```sql
 SELECT name, type FROM corso_di_laurea WHERE UPPER(department) LIKE '%DIPARTIMENTO DI INGEGNERIA E ARCHITETTURA%' LIMIT 40;
@@ -334,7 +307,7 @@ These are the programs currently listed for the department. If you need more det
 
 ---
 
-### 15. Tell me all the exams in the calendar for the Advanced Internet Technologies subject that were held in February 2026
+### 14. Tell me all the exams in the calendar for the Advanced Internet Technologies subject that were held in February 2026
 
 ```sql
 SELECT date, start_time, end_time, name_event, room_name, site_name FROM evento_aula WHERE UPPER(name_event) LIKE '%ADVANCED INTERNET TECHNOLOGIES%' AND UPPER(event_type) LIKE '%ESAME%' AND date BETWEEN '2026-02-01' AND '2026-02-29' LIMIT 40;
